@@ -1,0 +1,68 @@
+################################################################
+## Drop by Chef, recipe rsyslog, template 29-file-send.conf.erb
+################################################################
+
+#Must be the first line
+$ModLoad imfile
+
+### Files defined into chef
+<% (node[:rsyslog][:imfile][:files] or {}).each do |file,name|%>
+# Log : <%=file%>	
+$InputFileName <%=name[:path]%>/<%=name[:name]%>
+$InputFileTag <%=name[:tag]%>
+$InputFileStateFile state-<%=name[:name]%>
+$InputFileFacility <%=node[:rsyslog][:imfile][:facility]%>
+<% if name[:severity]%>
+$InputFileSeverity <%=name[:severity]%>
+<%end%>
+<% if name[:facility]%>
+$InputFileFacility <%=name[:facility]%>
+<%end%>
+<% if name[:stateinterval]%>
+$InputFilePersistStateInterval <%=name[:stateintervalle]%>
+<%else%>
+$InputFilePersistStateInterval 4000
+$InputRunFileMonitor
+
+<%end%>
+<%end%>
+###
+
+### Files from runit
+<% (node[:runit][:apps] or {}).each do |apps,t|%>
+	<% if node[:runit][:syslog_dir].empty? %>
+		
+# Log from app <%=apps%>
+$InputFileName <%=node[:runit][:sv_dir]%>/<%=apps%>/log/main/current
+<%else%>
+$InputFileName <%=node[:runit][:syslog_dir]%>/<%=apps%>/current
+<%end%>
+$InputFileFacility <%=node[:rsyslog][:imfile][:facility]%>
+$InputFileTag runit_<%=apps%>
+$InputFileStateFile state-<%=apps%>
+$InputFilePersistStateInterval 4000
+$InputRunFileMonitor
+
+<%end%>
+
+### ###
+
+#Files from sa-app
+<% @db.each do |app|%>
+	<% unless app['specificConfiguration'].nil? || app['specificConfiguration'][node.chef_environment].nil? || app['specificConfiguration'][node.chef_environment]['logs'].nil? %>
+	<% app['specificConfiguration'][node.chef_environment]['logs'].sort.each do |name,file|%>
+#File <%=name%>		
+$InputFileName <%=app["log_to"]%>/<%=file["filename"]%>
+$InputFileTag saapp_<%=app["id"]%>_<%=name%>
+$InputFileFacility <%=node[:rsyslog][:imfile][:facility]%>
+$InputFileStateFile state-<%=file["filename"]%>
+$InputFilePersistStateInterval 4000
+$InputRunFileMonitor
+
+   <%end%>
+   <%end%>
+<%end%>
+### 
+
+#Must be the last line
+$InputFilePollInterval <%=node[:rsyslog][:imfile][:pollinginterval]%>

@@ -1,0 +1,9 @@
+################################################################
+## Drop by Chef, recipe rsyslog, template 30-template.conf.erb
+################################################################
+
+<% node['rsyslog']['template'].each do | id | %>
+<% id.each do | name,tmpl | %>
+$template <%= name %>,<%= tmpl %>
+<%end%>
+<%end%>

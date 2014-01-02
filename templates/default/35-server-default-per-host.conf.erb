@@ -1,0 +1,72 @@
+################################################################
+## Drop by Chef, recipe rsyslog, template 35-server-per-host.conf.erb
+################################################################
+
+<% if node['rsyslog']['use_relp'] -%>
+$ModLoad imrelp
+$InputRELPServerRun <%= node['rsyslog']['relp_port'] %>
+<% end -%>
+$DirGroup <%= node['rsyslog']['group'] %>
+$DirCreateMode 0755
+$FileGroup <%= node['rsyslog']['group'] %>
+
+$template PerHostAuth,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/auth.log"
+$template PerHostCron,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/cron.log"
+$template PerHostSyslog,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/syslog"
+$template PerHostDaemon,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/daemon.log"
+$template PerHostKern,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/kern.log"
+$template PerHostLpr,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/lpr.log"
+$template PerHostUser,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/user.log"
+$template PerHostMail,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/mail.log"
+$template PerHostMailInfo,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/mail.info"
+$template PerHostMailWarn,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/mail.warn"
+$template PerHostMailErr,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/mail.err"
+$template PerHostNewsCrit,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/news.crit"
+$template PerHostNewsErr,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/news.err"
+$template PerHostNewsNotice,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/news.notice"
+$template PerHostDebug,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/debug"
+$template PerHostMessages,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/messages"
+
+auth,authpriv.*         ?PerHostAuth;kbrwtmpl
+&	~
+cron.*                  ?PerHostCron;kbrwtmpl
+&	~
+daemon.*                -?PerHostDaemon;kbrwtmpl
+&	~
+kern.*                  -?PerHostKern;kbrwtmpl
+&	~
+lpr.*                   -?PerHostLpr;kbrwtmpl
+&	~
+user.*                  -?PerHostUser;kbrwtmpl
+&	~
+# All mail log into one file only
+mail.*                  -?PerHostMail;kbrwtmpl
+&	~
+#mail.info               -?PerHostMailInfo;kbrwtmpl
+#&	~
+#mail.warn               ?PerHostMailWarn;kbrwtmpl
+#&	~
+#mail.err                ?PerHostMailErr;kbrwtmpl
+#&	~
+news.crit               ?PerHostNewsCrit;kbrwtmpl
+&	~
+news.err                ?PerHostNewsErr;kbrwtmpl
+&	~
+news.notice             -?PerHostNewsNotice;kbrwtmpl
+&	~
+
+*.=debug;\
+  auth,authpriv.none;\
+  news.none;mail.none   -?PerHostDebug;kbrwtmpl
+
+*.=info;*.=notice;*.=warn;\
+  auth,authpriv.none;\
+  cron,daemon.none;\
+  mail,news.none        -?PerHostMessages;kbrwtmpl
+&	~  
+  *.*;auth,authpriv.none  -?PerHostSyslog;kbrwtmpl
+#
+# Stop processing of all non-local messages. You can process remote messages
+# on levels less than 35.
+#
+:fromhost-ip,!isequal,"127.0.0.1" ~

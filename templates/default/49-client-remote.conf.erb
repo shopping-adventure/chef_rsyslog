@@ -1,0 +1,21 @@
+################################################################
+## Drop by Chef, recipe rsyslog, template 49-remote.conf.erb
+################################################################
+
+<% @servers.each do |server| -%>
+
+# Log to <%=server%>	
+$ActionQueueType LinkedList # use asynchronous processing
+$ActionQueueMaxDiskSpace 2g
+$ActionQueueFileName fwd-<%=server%>
+$ActionQueueFileName srvrfwd # set file name, also enables disk mode
+$ActionResumeRetryCount -1 # infinite retries on insert failure
+$ActionQueueSaveOnShutdown on # save in-memory data if rsyslog shuts down
+<% case node['rsyslog']['protocol'] -%>
+<% when "tcp" -%>
+<%= node['rsyslog']['logs_to_forward'] %> @@<%= server %>:<%= node['rsyslog']['port'] %>
+<% when "udp" -%>
+<%= node['rsyslog']['logs_to_forward'] %> @<%= server %>:<%= node['rsyslog']['port'] %>
+<% end -%>
+
+<% end -%>

@@ -1,10 +1,10 @@
 name              'rsyslog'
-maintainer        'Opscode, Inc.'
-maintainer_email  'cookbooks@opscode.com'
+maintainer        'KBRW'
+maintainer_email  'kevin@kbrwadventure.com'
 license           'Apache 2.0'
 description       'Installs and configures rsyslog'
 long_description  IO.read(File.join(File.dirname(__FILE__), 'README.md'))
-version           '1.10.2'
+version           '1.8.1'
 
 recipe            'rsyslog', 'Installs rsyslog'
 recipe            'rsyslog::client', 'Sets up a client to log to a remote rsyslog server'
@@ -13,6 +13,8 @@ recipe            'rsyslog::server', 'Sets up an rsyslog server'
 supports          'ubuntu'
 supports          'debian', '>= 5.0'
 supports          'redhat', '>= 6.0'
+
+depends 'logrotate'
 
 attribute 'rsyslog',
   :display_name => 'Rsyslog',

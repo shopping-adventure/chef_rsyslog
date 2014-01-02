@@ -1,3 +1,8 @@
+################################################################
+## Drop by Chef, recipe rsyslog, template rsyslog.conf.erb
+################################################################
+
+
 #  /etc/rsyslog.conf	Configuration file for rsyslog v3.
 #
 #			For more information see
@@ -17,33 +22,40 @@ $PreserveFQDN <%= node['rsyslog']['preserve_fqdn'] %>
 #### MODULES ####
 #################
 
-<% if node['rsyslog']['modules'] && !node['rsyslog']['modules'].empty? %>
-  <% [*node['rsyslog']['modules']].each do |mod| %>
-$ModLoad <%= mod %>
-  <% end %>
-<% end %>
+$ModLoad imuxsock # provides support for local system logging
+$ModLoad imklog   # provides kernel logging support (previously done by rklogd)
+#$ModLoad immark  # provides --MARK-- message capability
 
 <% if node['rsyslog']['server'] -%>
 # Provide <%= node['rsyslog']['protocol'].upcase %> log reception
-<% case node['rsyslog']['protocol'] -%>
-<% when "tcp" -%>
+<% if node['rsyslog']['protocol'].match('tcp') -%>
 $ModLoad imtcp
 $InputTCPServerRun <%= node['rsyslog']['port'] %>
-<% when "udp" -%>
+<%end %>
+<% if node['rsyslog']['protocol'].match('udp') -%>
 $ModLoad imudp
+$UDPServerAddress <%= (node.attribute?('cloud') && node['cloud']['local_ipv4']) ? node['cloud']['local_ipv4'] : node['ipaddress'] %>
 $UDPServerRun <%= node['rsyslog']['port'] %>
 <% end -%>
 <% end -%>
+
+
+<% if !node['rsyslog']['server'] -%>
+# Provide udp log reception
+$ModLoad imudp
+$UDPServerAddress 127.0.0.1
+$UDPServerRun 514
+<%end%>
 
 ###########################
 #### GLOBAL DIRECTIVES ####
 ###########################
 
-<% unless node["rsyslog"]["high_precision_timestamps"] -%>
-#
+<% if node["rsyslog"]["high_precision_timestamps"] -%>
+# Use high precisiion timestamps
+$ActionFileDefaultTemplate RSYSLOG_FileFormat
+<% else %>
 # Use default timestamp format.
-# To enable high precision timestamps, comment out the following line.
-#
 $ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat
 <% end -%>
 
@@ -67,20 +79,7 @@ $Umask 0022
 $PrivDropToUser <%= node['rsyslog']['user'] %>
 $PrivDropToGroup <%= node['rsyslog']['group'] %>
 <% end %>
-<% unless node['rsyslog']['rate_limit_interval'].nil? %>
 #
-# Set the amount of time that is being measured for rate limiting
+# Include all config files in /etc/rsyslog.d/
 #
-$SystemLogRateLimitInterval <%= node['rsyslog']['rate_limit_interval'] %>
-<% end %>
-<% unless node['rsyslog']['rate_limit_burst'].nil? %>
-#
-# Set the amount of messages, that have to occur in the time limit of
-#   SystemLogRateLimitInterval, to trigger rate limiting
-#
-$SystemLogRateLimitBurst <%= node['rsyslog']['rate_limit_burst'] %>
-<% end %>
-#
-# Include all config files in <%= node['rsyslog']['config_prefix'] %>/rsyslog.d/
-#
-$IncludeConfig <%= node['rsyslog']['config_prefix'] %>/rsyslog.d/*.conf
+$IncludeConfig /etc/rsyslog.d/*.conf

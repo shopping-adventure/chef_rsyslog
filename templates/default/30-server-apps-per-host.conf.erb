@@ -1,0 +1,76 @@
+################################################################
+## Drop by Chef, recipe rsyslog, template 30-apps-per-host.conf.erb
+################################################################
+
+
+$template PerHostSnmpd,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/snmpd.log"
+:programname,isequal,"snmpd"                            ?PerHostSnmpd;kbrwtmpl
+&	~
+
+$template PerHostNtpd,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/ntpd.log"
+:programname,isequal,"ntpd"                            ?PerHostNtpd;kbrwtmpl
+&	~
+
+$template PerHostHaproxy,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/haproxy.log"
+:programname,isequal,"haproxy"                            ?PerHostHaproxy;kbrwtmpl
+&	~
+
+
+$template PerHostZabbixServer,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/zabbix_server.log"
+:programname,isequal,"Zabbix"                            ?PerHostZabbixServer;kbrwtmpl
+&	~
+
+$template PerHostSshd,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/sshd.log"
+:programname,isequal,"sshd"                            ?PerHostSshd;kbrwtmpl
+&	~
+
+$template PerHostNamed,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['per_host_dir'] %>/named.log"
+:programname,isequal,"named"                            ?PerHostNamed;kbrwtmpl
+&	~
+
+$template PerHostEpmd,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['apps_dir'] %>/sa_riak/epmd.log"
+:programname,isequal,"epmd"                            ?PerHostEpmd;kbrwtmpl
+&	~
+
+### imfilenode containssearch all nodes with imfile attribute,we generate the line regarding the tag
+### same line could be wrote multiple time, not a problem
+
+<% (@imfilenode.sort or []).sort.each do |n| %>
+	<% (n['rsyslog']['imfile']['files'] or {}).sort.each do |name,file| %>
+# node <%=n%> log : <%=file["name"]%>
+$template PerApps<%=file['tag']%>,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['apps_dir'] %>/<%=file['app_name']%>/<%=file['remote_file']%>"
+:syslogtag,isequal,"<%=file['tag']%>"                            ?PerApps<%=file['tag']%>;notimetmpl
+&	~
+
+<%end%>
+<%end%>
+### ###
+
+### Runit log contains the name of the app like runit_nameofapp into the msg and syslogtag
+<% (@runitnode or []).sort.each do |n|%>
+	<%unless n['runit']['apps'].nil? ||  n['rsyslog'].nil? || n['rsyslog']['log_dir'].nil? || n['rsyslog']['apps_dir'].nil? %>
+	<% (n['runit']['apps'] or {}).each do |apps,value|%>
+#App:<%=apps%>  node:<%=n%> 
+$template PerApps<%=apps%>,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['apps_dir'] %>/<%=apps%>/runit_<%=apps%>.log"
+:syslogtag,isequal,"runit_<%=apps%>"                            ?PerApps<%=apps%>;notimetmpl
+&	~
+
+<%end%>
+<%end%>
+<%end%>
+### ###
+
+### Sa-app file are retreived from the databag for an app
+<% @apps.each do |db|%>
+	<%unless db["specificConfiguration"].nil? || db["specificConfiguration"][node.chef_environment].nil? ||  db["specificConfiguration"][node.chef_environment]["logs"].nil?%> 
+		<%db["specificConfiguration"][node.chef_environment]["logs"].each do |name,log|%>
+# App <%=db["id"]%> log : <%= name %>			
+$template PerApps<%=db["id"]%><%=name%>,"<%= node['rsyslog']['log_dir'] %>/<%= node['rsyslog']['apps_dir'] %>/<%=db["id"]%>/<%=log["filename"]%>
+:syslogtag,isequal,"saapp_<%=db["id"]%>_<%=name%>"                            ?PerApps<%=db["id"]%><%=name%>;notimetmpl
+&	~
+
+<%end%>
+<%end%>
+<%end%>
+### ###
+

@@ -7,19 +7,16 @@ describe 'rsyslog::client' do
       $stdout.stub(:puts)
     end
 
-    it 'exits fatally' do
+    it 'exists fatally' do
       expect { ChefSpec::ChefRunner.new.converge('rsyslog::client') }.to raise_error(SystemExit)
     end
   end
 
   let(:chef_run) do
-    ChefSpec::ChefRunner.new(platform: 'ubuntu', version: '12.04') do |node|
-      node.set['rsyslog']['server_ip'] = server_ip
+    ChefSpec::ChefRunner.new(platform => 'ubuntu', version => '12.04') do |node|
+      node.set['rsyslog']['server_ip'] = '10.0.0.50'
     end.converge('rsyslog::client')
   end
-
-  let(:server_ip) { "10.#{rand(1..9)}.#{rand(1..9)}.50" }
-  let(:service_resource) { 'service[rsyslog]' }
 
   it 'includes the default recipe' do
     expect(chef_run).to include_recipe('rsyslog::default')
@@ -29,7 +26,7 @@ describe 'rsyslog::client' do
     let(:template) { chef_run.template('/etc/rsyslog.d/49-remote.conf') }
 
     it 'creates the template' do
-      expect(chef_run).to create_file_with_content(template.path, "*.* @@#{server_ip}:514")
+      expect(chef_run).to create_file_with_content('/etc/rsyslog.d/49-remote.conf', '*.* @@10.0.0.50:514')
     end
 
     it 'is owned by root:root' do
@@ -42,34 +39,7 @@ describe 'rsyslog::client' do
     end
 
     it 'notifies restarting the service' do
-      expect(template).to notify(service_resource, :restart)
-    end
-
-    context 'on SmartOS' do
-      let(:chef_run) do
-        ChefSpec::ChefRunner.new(platform: 'smartos', version: 'joyent_20130111T180733Z') do |node|
-          node.set['rsyslog']['server_ip'] = server_ip
-        end.converge('rsyslog::client')
-      end
-
-      let(:template) { chef_run.template('/opt/local/etc/rsyslog.d/49-remote.conf') }
-
-      it 'creates the template' do
-        expect(chef_run).to create_file_with_content(template.path, "*.* @@#{server_ip}:514")
-      end
-
-      it 'is owned by root:root' do
-        expect(template.owner).to eq('root')
-        expect(template.group).to eq('root')
-      end
-
-      it 'has 0644 permissions' do
-        expect(template.mode).to eq('0644')
-      end
-
-      it 'notifies restarting the service' do
-        expect(template).to notify(service_resource, :restart)
-      end
+      expect(template).to notify('service[rsyslog]', :restart)
     end
   end
 
@@ -77,29 +47,11 @@ describe 'rsyslog::client' do
     let(:file) { chef_run.file('/etc/rsyslog.d/server.conf') }
 
     it 'deletes the file' do
-      expect(chef_run).to delete_file(file.path)
+      expect(chef_run).to delete_file('/etc/rsyslog.d/server.conf')
     end
 
     it 'notifies restarting the service' do
-      expect(file).to notify(service_resource, :reload)
-    end
-
-    context 'on SmartOS' do
-      let(:chef_run) do
-        ChefSpec::ChefRunner.new(platform: 'smartos', version: 'joyent_20130111T180733Z') do |node|
-          node.set['rsyslog']['server_ip'] = server_ip
-        end.converge('rsyslog::client')
-      end
-
-      let(:file) { chef_run.file('/opt/local/etc/rsyslog.d/server.conf') }
-
-      it 'deletes the file' do
-        expect(chef_run).to delete_file(file.path)
-      end
-
-      it 'notifies restarting the service' do
-        expect(file).to notify(service_resource, :reload)
-      end
+      expect(file).to notify('service[rsyslog]', :reload)
     end
   end
 end
